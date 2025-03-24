@@ -100,6 +100,16 @@ export const startJourney = async (req, res) => {
     // console.log("Raspberry Pi configured:", configResult);
 
     // Save journey in database (only configurations, empty telemetry)
+    const initialData = {
+      timestamp: new Date(),
+      horizontalSpeed: 0,
+      verticalSpeed: 0,
+      battery: 0,
+      currLatti: 0,
+      currLongi: 0,
+      currAltitude: 0,
+    };
+    realtimeTelemetry.push(initialData);
     const journey = new Journey({
       journeyId,
       telemetry: [],  // Empty initially
@@ -123,7 +133,6 @@ export const startJourney = async (req, res) => {
 // PUT /api/telemetry/update and this will be called by the Raspberry to update the data 
 export const updateJourney = async (req, res) => {
   try {
-    console.log("Trying to update!")
     if (!activeJourneyId) {
       return res.status(400).json({ error: "No active journey" });
     }
