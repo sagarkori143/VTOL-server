@@ -55,6 +55,7 @@ export const startJourney = async (req, res) => {
     } = req.body;
     
     // Generate a new journey ID
+    console.log("trying to generate a new journey id")
     const journeyId = generateJourneyId();
     activeJourneyId = journeyId;
     console.log("created journey id as: ", journeyId)
@@ -84,18 +85,19 @@ export const startJourney = async (req, res) => {
     };
     console.log("this is the configData", configData)
     // Send configuration to Raspberry Pi
-    const raspberryConfigUrl = `${raspberryUrl}/start_journey`;
-    const configResponse = await fetch(raspberryConfigUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(configData),
-    });
+    // const raspberryConfigUrl = `${raspberryUrl}/start_journey`;
+    // console.log("This is the rasp url: ",raspberryConfigUrl)
+    // const configResponse = await fetch(raspberryConfigUrl, {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify(configData),
+    // });
 
-    const configResult = await configResponse.json();
-    if (!configResponse.ok) {
-      return res.status(500).json({ error: 'Failed to configure Raspberry Pi', details: configResult });
-    }
-    console.log("Raspberry Pi configured:", configResult);
+    // const configResult = await configResponse.json();
+    // if (!configResponse.ok) {
+    //   return res.status(500).json({ error: 'Failed to configure Raspberry Pi', details: configResult });
+    // }
+    // console.log("Raspberry Pi configured:", configResult);
 
     // Save journey in database (only configurations, empty telemetry)
     const journey = new Journey({
