@@ -18,7 +18,7 @@ export const droneCommand = async (req, res) => {
     }
 
     // Define the full command API endpoint
-    const raspberryCommandUrl = `${raspberryPiUrl}/execute-command`;
+    const raspberryCommandUrl = `${raspberryPiUrl}/execute`;
 
     // Forward the command to Raspberry Pi
     const response = await fetch(raspberryCommandUrl, {

@@ -1,9 +1,19 @@
-import { Schema, model } from 'mongoose';
+import mongoose from "mongoose";
 
-export const telemetrySchema = new Schema({
+const { Schema } = mongoose;
+
+const telemetrySchema = new Schema({
+  timestamp: { type: Date, default: Date.now },
+  horizontalSpeed: Number,
+  verticalSpeed: Number,
   battery: Number,
+  currLatti: Number,
+  currLongi: Number,
+  currAltitude: Number
+});
+
+const configurationSchema = new Schema({
   altitude: Number,
-  speed: Number,
   temperature: Number,
   criticalBattery: Number,
   emergencyAction: String,
@@ -13,13 +23,16 @@ export const telemetrySchema = new Schema({
   destiLongi: Number,
   destiLatti: Number,
   timestamp: { type: Date, default: Date.now }
-}, { _id: false });
+});
 
 const journeySchema = new Schema({
   journeyId: { type: String, unique: true },
   telemetry: [telemetrySchema],
   commands: { type: [String], default: [] },
+  configurations: configurationSchema,
   createdAt: { type: Date, default: Date.now }
 });
 
-export const Journey = model('Journey', journeySchema);
+const Journey = mongoose.model("Journey", journeySchema);
+
+export { Journey };  // Named export

@@ -1,3 +1,4 @@
+import { config } from "dotenv";
 import { Journey } from "../models/journey.js";
 import { calculateDistance } from "../utils/calculateDistance.js"
 import { getBatterySoC } from "../utils/raspberryServices.js";
@@ -48,75 +49,108 @@ export const checkFeasibility = async (req, res) => {
 // POST /api/telemetry/start
 export const startJourney = async (req, res) => {
   try {
-    // Extract telemetry data from request body
-    const telemetry = req.body;
-    telemetry.timestamp = new Date();
-   
-    // Fetch the Raspberry Pi URL from the router
+    const {
+      sourceLongi, sourceLatti, destiLongi, destiLatti,
+      altitude, temperature, criticalBattery, emergencyAction, pilot
+    } = req.body;
+    
+    // Generate a new journey ID
+    const journeyId = generateJourneyId();
+    activeJourneyId = journeyId;
+    console.log("created journey id as: ", journeyId)
+
+    // Fetch the Raspberry Pi URL
     const response = await fetch('https://vtol-server.onrender.com/api/telemetry/url');
     const raspberryResponse = await response.json();
     const raspberryUrl = raspberryResponse.url;
-
 
     if (!raspberryUrl || raspberryUrl === 'null') {
       return res.status(500).json({ error: 'Raspberry Pi URL not available' });
     }
 
-    // Send telemetry data to the Raspberry Pi
-    const raspberryPostUrl = `${raspberryUrl}/start_journey`;
-    try {
-      const response = await fetch(raspberryPostUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(telemetry)
-      });
-    
-      const result = await response.json();
-      console.log("Raspberry Response:", result);
-    } catch (error) {
-      console.error("Error sending data:", error);
-    }
-
-    // Create a new journey document with the first telemetry record
-    const journey = new Journey({
-      journeyId: generateJourneyId(),
-      telemetry: [telemetry]
+    // Configuration data to be stored & sent to Raspberry Pi
+    const configData = {
+      journeyId,
+      sourceLongi,
+      sourceLatti,
+      destiLongi,
+      destiLatti,
+      altitude,
+      temperature,
+      criticalBattery,
+      emergencyAction,
+      pilot,
+      timestamp: new Date(),
+    };
+    console.log("this is the configData", configData)
+    // Send configuration to Raspberry Pi
+    const raspberryConfigUrl = `${raspberryUrl}/start_journey`;
+    const configResponse = await fetch(raspberryConfigUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(configData),
     });
-    const savedJourney = await journey.save(); // here we are saving the current status
-    activeJourneyId = savedJourney.journeyId;
-    realtimeTelemetry = [telemetry];
-    console.log('New journey started with ID:', activeJourneyId);
-    res.status(200).json({ status: 'journey started', journeyId: activeJourneyId });
+
+    const configResult = await configResponse.json();
+    if (!configResponse.ok) {
+      return res.status(500).json({ error: 'Failed to configure Raspberry Pi', details: configResult });
+    }
+    console.log("Raspberry Pi configured:", configResult);
+
+    // Save journey in database (only configurations, empty telemetry)
+    const journey = new Journey({
+      journeyId,
+      telemetry: [],  // Empty initially
+      configurations: configData,
+      commands: [],
+      createdAt: new Date(),
+    });
+    await journey.save()
+      .then(() => console.log("Journey saved successfully"))
+      .catch(err => console.error("Error saving journey:", err));
+
+    res.status(200).json({ status: 'Journey started', journeyId });
   } catch (error) {
     console.error('Error starting journey:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
+
+
 // PUT /api/telemetry/update and this will be called by the Raspberry to update the data 
 export const updateJourney = async (req, res) => {
   try {
+    console.log("Trying to update!")
     if (!activeJourneyId) {
-      return res.status(400).json({ error: 'No active journey. Start a journey first.' });
+      return res.status(400).json({ error: "No active journey" });
     }
-    const telemetry = req.body;
-    telemetry.timestamp = new Date();
-    console.log("Received Telemetry Data:", telemetry); 
 
-    // Append telemetry to the in-memory array
-    realtimeTelemetry.push(telemetry);
+    const { horizontalSpeed, verticalSpeed, battery, currLatti, currLongi, currAltitude } = req.body;
 
-    // Update the journey document in MongoDB by pushing the new telemetry record
-    await Journey.findOneAndUpdate(
-      { journeyId: activeJourneyId },
-      { $push: { telemetry: telemetry } },
-      { new: true }
-    );
-    console.log('Journey updated for ID:', activeJourneyId);
-    res.status(200).json({ status: 'journey updated' });
+    const journey = await Journey.findOne({ journeyId: activeJourneyId });
+    if (!journey) {
+      return res.status(404).json({ error: "Active journey not found" });
+    }
+
+    const telemetryData = {
+      timestamp: new Date(),
+      horizontalSpeed,
+      verticalSpeed,
+      battery,
+      currLatti,
+      currLongi,
+      currAltitude,
+    };
+
+    realtimeTelemetry.push(telemetryData);
+    journey.telemetry.push(telemetryData);
+    await journey.save();
+
+    res.status(200).json({ status: "Telemetry updated", telemetryData });
   } catch (error) {
-    console.error('Error updating journey:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Error updating telemetry:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -142,16 +176,29 @@ export const endJourney = async (req, res) => {
       return res.status(400).json({ error: "No active journey to end." });
     }
 
-    // Update the journey document in MongoDB with the final telemetry data
-    await Journey.findOneAndUpdate(
-      { journeyId: activeJourneyId },
-      { $set: { telemetry: realtimeTelemetry, endedAt: new Date() } },
-      { new: true }
-    );
+    console.log(`Ending Journey: ${activeJourneyId}, Total Telemetry Records: ${realtimeTelemetry.length}`);
 
-    console.log("Journey ended with ID:", activeJourneyId);
+    // Ensure telemetry is not empty before updating the database
+    if (realtimeTelemetry.length > 0) {
+      await Journey.findOneAndUpdate(
+        { journeyId: activeJourneyId },
+        {
+          $push: { telemetry: { $each: realtimeTelemetry } }, // Append all telemetry data
+          $set: { endedAt: new Date() }
+        },
+        { new: true }
+      );
+    } else {
+      await Journey.findOneAndUpdate(
+        { journeyId: activeJourneyId },
+        { $set: { endedAt: new Date() } },
+        { new: true }
+      );
+    }
 
-    // Reset in-memory journey state
+    console.log("Journey ended successfully:", activeJourneyId);
+
+    // Reset in-memory state only after successful update
     activeJourneyId = null;
     realtimeTelemetry = [];
 
@@ -161,4 +208,3 @@ export const endJourney = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
