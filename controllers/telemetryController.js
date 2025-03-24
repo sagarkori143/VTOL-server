@@ -7,6 +7,7 @@ import { checkCapability } from "../utils/raspberryServices.js";
 // In-memory active journey id and realtime telemetry array
 let activeJourneyId = null;
 let realtimeTelemetry = [];
+let realtimeConfigurations = {};
 
 // Function to generate a simple journey id (could be replaced with a UUID)
 function generateJourneyId() {
@@ -110,6 +111,7 @@ export const startJourney = async (req, res) => {
       currAltitude: 0,
     };
     realtimeTelemetry.push(initialData);
+    realtimeConfigurations = configData;
     const journey = new Journey({
       journeyId,
       telemetry: [],  // Empty initially
@@ -172,7 +174,10 @@ export const getLatestTelemetry = async (req, res) => {
       return res.status(404).json({ error: 'No telemetry data available' });
     }
     const latestTelemetry = realtimeTelemetry[realtimeTelemetry.length - 1];
-    res.status(200).json(latestTelemetry);
+    res.status(200).json({
+      latestTelemetry,
+      configurations: realtimeConfigurations, // Include configuration details
+    });
   } catch (error) {
     console.error('Error getting latest telemetry:', error);
     res.status(500).json({ error: 'Internal server error' });
