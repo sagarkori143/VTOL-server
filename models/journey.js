@@ -18,6 +18,7 @@ export const telemetrySchema = new Schema({
 const journeySchema = new Schema({
   journeyId: { type: String, unique: true },
   telemetry: [telemetrySchema],
+  commands: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now }
 });
 
