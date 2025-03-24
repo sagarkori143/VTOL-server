@@ -19,6 +19,6 @@ router.put('/update', updateJourney); // will be used by the raspberry
 router.get('/', getLatestTelemetry); // anyone can use
 
 // Route to terminate the current journey
-router.get('/end',endJourney); // anyone can use
+router.delete('/end',endJourney); // anyone can use
 
 export default router;

@@ -1,5 +1,5 @@
 import { Journey } from "../models/journey.js";
-import {calculateDistance} from "../utils/calculateDistance.js"
+import { calculateDistance } from "../utils/calculateDistance.js"
 import { getBatterySoC } from "../utils/raspberryServices.js";
 import { checkCapability } from "../utils/raspberryServices.js";
 
@@ -12,8 +12,8 @@ function generateJourneyId() {
   return 'journey-' + Date.now();
 }
 
-export const checkFeasibility = async(req,res) =>{
-  try{
+export const checkFeasibility = async (req, res) => {
+  try {
     const { sourceLongi, sourceLatti, destiLongi, destiLatti } = req.body;
     const distance = calculateDistance(sourceLongi, sourceLatti, destiLongi, destiLatti);
     const batteryData = await getBatterySoC();
@@ -25,8 +25,8 @@ export const checkFeasibility = async(req,res) =>{
       return res.status(500).json({ error: "Invalid distance data", distance });
     }
     const isJourneyPossible = checkCapability(distance, batterySoC);
-    console.log(distance,batterySoC,isJourneyPossible);
-    
+    console.log(distance, batterySoC, isJourneyPossible);
+
     if (!isJourneyPossible) {
       return res.status(400).json({
         error: "Battery is insufficient to cover the journey.",
@@ -37,9 +37,9 @@ export const checkFeasibility = async(req,res) =>{
     return res.status(200).json({
       message: "This journey can be commenced. Go ahead!"
     })
-  }catch{
+  } catch {
     return res.status(505).json({
-      error:"Some error occured."
+      error: "Some error occured."
     })
   }
 }
@@ -51,11 +51,32 @@ export const startJourney = async (req, res) => {
     // Extract telemetry data from request body
     const telemetry = req.body;
     telemetry.timestamp = new Date();
-
-    /* Now before doing anyting else i need to push this data to the raspberry. so that it can start 
-       the drone and configure it for the provided informations.
-    */
    
+    // Fetch the Raspberry Pi URL from the router
+    const response = await fetch('https://vtol-server.onrender.com/api/telemetry/url');
+    const raspberryResponse = await response.json();
+    const raspberryUrl = raspberryResponse.url;
+
+
+    if (!raspberryUrl || raspberryUrl === 'null') {
+      return res.status(500).json({ error: 'Raspberry Pi URL not available' });
+    }
+
+    // Send telemetry data to the Raspberry Pi
+    const raspberryPostUrl = `${raspberryUrl}/start_journey`;
+    try {
+      const response = await fetch(raspberryPostUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(telemetry)
+      });
+    
+      const result = await response.json();
+      console.log("Raspberry Response:", result);
+    } catch (error) {
+      console.error("Error sending data:", error);
+    }
+
     // Create a new journey document with the first telemetry record
     const journey = new Journey({
       journeyId: generateJourneyId(),
@@ -72,7 +93,7 @@ export const startJourney = async (req, res) => {
   }
 };
 
-// PUT /api/telemetry/update
+// PUT /api/telemetry/update and this will be called by the Raspberry to update the data 
 export const updateJourney = async (req, res) => {
   try {
     if (!activeJourneyId) {
@@ -80,6 +101,7 @@ export const updateJourney = async (req, res) => {
     }
     const telemetry = req.body;
     telemetry.timestamp = new Date();
+    console.log("Received Telemetry Data:", telemetry); 
 
     // Append telemetry to the in-memory array
     realtimeTelemetry.push(telemetry);

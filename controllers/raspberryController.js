@@ -25,7 +25,8 @@ export const updateRaspberryUrl = async (req, res) => {
 // GET: Fetch the latest Raspberry Pi URL
 export const getRaspberryUrl = async (req, res) => {
   try {
-    const raspberry = await Raspberry.findOne();
+    const raspberry = await Raspberry.findOne({});
+    console.log("this is url:",raspberry)
 
     if (!raspberry) {
       return res.status(404).json({ message: 'No Raspberry URL found' });
