@@ -1,13 +1,16 @@
-import { config } from "dotenv";
 import { Journey } from "../models/journey.js";
-import { calculateDistance } from "../utils/calculateDistance.js"
-import { getBatterySoC } from "../utils/raspberryServices.js";
-import { checkCapability } from "../utils/raspberryServices.js";
+import { check } from "../utils/feasibility.js";
 
 // In-memory active journey id and realtime telemetry array
 let activeJourneyId = null;
 let realtimeTelemetry = [];
 let realtimeConfigurations = {};
+let commands = [];
+let initialDroneData = {
+  batterySOC: 0,
+  droneLatti: 0.0,
+  droneLongi: 0.0
+};
 
 // Function to generate a simple journey id (could be replaced with a UUID)
 function generateJourneyId() {
@@ -17,34 +20,80 @@ function generateJourneyId() {
 export const checkFeasibility = async (req, res) => {
   try {
     const { sourceLongi, sourceLatti, destiLongi, destiLatti } = req.body;
-    const distance = calculateDistance(sourceLongi, sourceLatti, destiLongi, destiLatti);
-    const batteryData = await getBatterySoC();
-    const batterySoC = batteryData?.batterySoC ?? null;
-    if (!batterySoC || typeof batterySoC !== "number") {
+    const batterySoC = initialDroneData.batterySOC;
+
+    if (batterySoC === null || typeof batterySoC !== "number") {
       return res.status(500).json({ error: "Invalid battery data", batterySoC });
     }
-    if (isNaN(distance) || distance < 0) {
-      return res.status(500).json({ error: "Invalid distance data", distance });
-    }
-    const isJourneyPossible = checkCapability(distance, batterySoC);
-    console.log(distance, batterySoC, isJourneyPossible);
 
-    if (!isJourneyPossible) {
+    const source = [parseFloat(sourceLatti), parseFloat(sourceLongi)];
+    const destination = [parseFloat(destiLatti), parseFloat(destiLongi)];
+
+    const result = await check({
+      source,
+      destination,
+      battery: batterySoC,
+    });
+
+    if (result.waypoints.length === 0) {
       return res.status(400).json({
         error: "Battery is insufficient to cover the journey.",
-        batterySoC: batterySoC,
-        distance: distance
+        batterySoC,
+        distance: result.totalDistance,
+        waypoints: []
       });
     }
+
     return res.status(200).json({
-      message: "This journey can be commenced. Go ahead!"
-    })
+      message: "This journey can be commenced. Go ahead!",
+      batterySoC,
+      distance: result.totalDistance,
+      waypoints: result.waypoints
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      error: "Some error occurred."
+    });
+  }
+};
+
+export const droneDetails = async (req, res) => {
+  try {
+    const { droneLatti, droneLongi, battery } = req.body;
+
+    initialDroneData.droneLatti = droneLatti;
+    initialDroneData.droneLongi = droneLongi;
+    initialDroneData.batterySOC = battery;
+
+    return res.status(200).json({
+      message: "Drone details uploaded successfully!"
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      error: "Some error occurred."
+    });
+  }
+};
+
+export const command = async (req, res) => {
+  try {
+    const { command } = req.body;
+    commands.push(command);
+
+    return res.status(200).json({
+      message: "Command sent successfully!"
+    });
   } catch {
-    return res.status(505).json({
-      error: "Some error occured."
-    })
+    console.error(err);
+    return res.status(500).json({
+      error: "Some error occurred."
+    });
   }
 }
+
 
 
 // POST /api/telemetry/start
@@ -54,21 +103,13 @@ export const startJourney = async (req, res) => {
       sourceLongi, sourceLatti, destiLongi, destiLatti,
       altitude, temperature, criticalBattery, emergencyAction, pilot
     } = req.body;
-    
+
     // Generate a new journey ID
     console.log("trying to generate a new journey id")
     const journeyId = generateJourneyId();
     activeJourneyId = journeyId;
     console.log("created journey id as: ", journeyId)
 
-    // Fetch the Raspberry Pi URL
-    const response = await fetch('https://vtol-server.onrender.com/api/telemetry/url');
-    const raspberryResponse = await response.json();
-    const raspberryUrl = raspberryResponse.url;
-
-    if (!raspberryUrl || raspberryUrl === 'null') {
-      return res.status(500).json({ error: 'Raspberry Pi URL not available' });
-    }
 
     // Configuration data to be stored & sent to Raspberry Pi
     const configData = {
@@ -84,21 +125,7 @@ export const startJourney = async (req, res) => {
       pilot,
       timestamp: new Date(),
     };
-    console.log("this is the configData", configData)
-    // Send configuration to Raspberry Pi
-    // const raspberryConfigUrl = `${raspberryUrl}/start_journey`;
-    // console.log("This is the rasp url: ",raspberryConfigUrl)
-    // const configResponse = await fetch(raspberryConfigUrl, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(configData),
-    // });
 
-    // const configResult = await configResponse.json();
-    // if (!configResponse.ok) {
-    //   return res.status(500).json({ error: 'Failed to configure Raspberry Pi', details: configResult });
-    // }
-    // console.log("Raspberry Pi configured:", configResult);
 
     // Save journey in database (only configurations, empty telemetry)
     const initialData = {
@@ -158,6 +185,7 @@ export const updateJourney = async (req, res) => {
 
     realtimeTelemetry.push(telemetryData);
     journey.telemetry.push(telemetryData);
+    journey.commands.push(commands);
     await journey.save();
 
     res.status(200).json({ status: "Telemetry updated", telemetryData });

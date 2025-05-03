@@ -2,7 +2,6 @@ import express, { json } from 'express';
 import cors from 'cors';
 import { connect } from 'mongoose';
 import telemetryRoutes from './routes/telemetry.js';
-import commandRoutes from './routes/command.js';  // Assuming you have this already
 import dotenv from 'dotenv';
 dotenv.config();
 const app = express();
@@ -33,7 +32,6 @@ app.use(json());
 
 // Mount telemetry and command routes
 app.use('/api/telemetry', telemetryRoutes);
-app.use('/api/command', commandRoutes);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

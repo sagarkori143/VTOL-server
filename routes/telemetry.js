@@ -1,16 +1,18 @@
 import { Router } from 'express';
 const router = Router();
-import { startJourney, updateJourney, getLatestTelemetry, checkFeasibility, endJourney } from '../controllers/telemetryController.js';
-import { getRaspberryUrl, updateRaspberryUrl } from '../controllers/raspberryController.js';
+import { startJourney, updateJourney, getLatestTelemetry, checkFeasibility, endJourney, command, droneDetails } from '../controllers/telemetryController.js';
+
+// Route for the drone to upload its battery and location when turned on
+router.post('/drone', droneDetails)
 
 // Route to check if the journey is possible to commence
 router.post('/check',checkFeasibility) // http://localhost:5000/api/telemetry/check
 
-router.post('/url',updateRaspberryUrl);
-router.get('/url',getRaspberryUrl);
-
 // Route to start a new journey with the first telemetry data
 router.post('/start', startJourney); // used by apps/website
+
+// Route for uploading any command for the drone
+router.post('/command',command)
 
 // Route to update the current journey with new telemetry data
 router.put('/update', updateJourney); // will be used by the raspberry
