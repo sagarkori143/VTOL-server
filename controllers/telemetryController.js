@@ -35,8 +35,8 @@ export const checkFeasibility = async (req, res) => {
       destination,
       battery: batterySoC,
     });
-
-    if (result.waypoints.length === 0) {
+    console.log("results got calculated: ",result);
+    if (!result.waypoints || result.waypoints.length === 0) {
       return res.status(400).json({
         error: "Battery is insufficient to cover the journey.",
         batterySoC,
