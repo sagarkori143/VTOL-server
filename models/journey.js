@@ -22,6 +22,12 @@ const configurationSchema = new Schema({
   sourceLatti: Number,
   destiLongi: Number,
   destiLatti: Number,
+  path: [
+    {
+      lat: Number,
+      lon: Number
+    }
+  ],
   timestamp: { type: Date, default: Date.now }
 });
 

@@ -11,6 +11,7 @@ let initialDroneData = {
   droneLatti: 0.0,
   droneLongi: 0.0
 };
+let path=[]
 
 // Function to generate a simple journey id (could be replaced with a UUID)
 function generateJourneyId() {
@@ -42,6 +43,8 @@ export const checkFeasibility = async (req, res) => {
         distance: result.totalDistance,
         waypoints: []
       });
+    }else{
+      path=result.waypoints;
     }
 
     return res.status(200).json({
@@ -69,6 +72,20 @@ export const droneDetails = async (req, res) => {
 
     return res.status(200).json({
       message: "Drone details uploaded successfully!"
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      error: "Some error occurred."
+    });
+  }
+};
+
+export const getDroneLocation = async (req, res) => {
+  try {
+    return res.status(200).json({
+      message: "Drone details uploaded successfully!",
+      initialDroneData
     });
   } catch (err) {
     console.error(err);
@@ -123,6 +140,7 @@ export const startJourney = async (req, res) => {
       criticalBattery,
       emergencyAction,
       pilot,
+      path,
       timestamp: new Date(),
     };
 
