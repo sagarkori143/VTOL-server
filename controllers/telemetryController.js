@@ -121,12 +121,8 @@ export const startJourney = async (req, res) => {
       altitude, temperature, criticalBattery, emergencyAction, pilot
     } = req.body;
 
-    // Generate a new journey ID
-    console.log("trying to generate a new journey id")
     const journeyId = generateJourneyId();
     activeJourneyId = journeyId;
-    console.log("created journey id as: ", journeyId)
-
 
     // Configuration data to be stored & sent to Raspberry Pi
     const configData = {
@@ -143,7 +139,9 @@ export const startJourney = async (req, res) => {
       path,
       timestamp: new Date(),
     };
-
+    if(path.length==0){
+      res.status(500).json({ error: 'No path waypoints found!' });
+    }
 
     // Save journey in database (only configurations, empty telemetry)
     const initialData = {
@@ -238,8 +236,6 @@ export const endJourney = async (req, res) => {
       return res.status(400).json({ error: "No active journey to end." });
     }
 
-    console.log(`Ending Journey: ${activeJourneyId}, Total Telemetry Records: ${realtimeTelemetry.length}`);
-
     // Ensure telemetry is not empty before updating the database
     if (realtimeTelemetry.length > 0) {
       await Journey.findOneAndUpdate(
@@ -258,11 +254,13 @@ export const endJourney = async (req, res) => {
       );
     }
 
-    console.log("Journey ended successfully:", activeJourneyId);
-
     // Reset in-memory state only after successful update
     activeJourneyId = null;
     realtimeTelemetry = [];
+    commands=[];    
+    initialDroneData.batterySOC=0;
+    initialDroneData.droneLatti=0.0;
+    initialDroneData.droneLongi-0.0;
 
     res.status(200).json({ status: "Journey ended successfully." });
   } catch (error) {
