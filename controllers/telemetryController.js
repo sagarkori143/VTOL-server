@@ -1,5 +1,5 @@
 import { Journey } from "../models/journey.js";
-import { check } from "../utils/feasibility.js";
+import { calculateDistance } from "../utils/feasibility.js";
 
 // In-memory active journey id and realtime telemetry array
 let activeJourneyId = null;
@@ -21,47 +21,49 @@ function generateJourneyId() {
 export const checkFeasibility = async (req, res) => {
   try {
     const { sourceLongi, sourceLatti, destiLongi, destiLatti } = req.body;
-    // temporarily desabling it for testing purpose
-    //const batterySoC = initialDroneData.batterySOC;
-    const batterySoC=85
-    if (batterySoC === null || typeof batterySoC !== "number") {
+
+    // Calculate the distance
+    const distance = calculateDistance(sourceLongi, sourceLatti, destiLongi, destiLatti);
+
+    const batterySoC = 85; //initialDroneData.batterySOC;
+    // const batterySoC = batteryData?.batterySoC ?? null; 
+
+    if (!batterySoC || typeof batterySoC !== "number") {
       return res.status(500).json({ error: "Invalid battery data", batterySoC });
     }
 
-    const source = [parseFloat(sourceLatti), parseFloat(sourceLongi)];
-    const destination = [parseFloat(destiLatti), parseFloat(destiLongi)];
-
-    const result = await check({
-      source,
-      destination,
-      battery: batterySoC,
-    });
-    console.log("results got calculated: ",result);
-    if (!result.waypoints || result.waypoints.length === 0) {
-      return res.status(400).json({
-        error: "Battery is insufficient to cover the journey.",
-        batterySoC,
-        distance: result.totalDistance,
-        waypoints: []
-      });
-    }else{
-      path=result.waypoints;
+    // Check if the distance is valid
+    if (isNaN(distance) || distance < 0) {
+      return res.status(500).json({ error: "Invalid distance data", distance });
     }
 
+    // Check if the journey is possible with the given battery and distance
+    const batteryPerKm = 40 / 30;
+    const requiredBattery = distance * batteryPerKm;
+    const isJourneyPossible = batterySoC >= requiredBattery;
+    if (!isJourneyPossible) {
+      console.log("Battery insufficient to cover the journey");  // Log if battery is insufficient
+      return res.status(400).json({
+        error: "Battery is insufficient to cover the journey.",
+        batterySoC: batterySoC,
+        distance: distance
+      });
+    }
     return res.status(200).json({
       message: "This journey can be commenced. Go ahead!",
-      batterySoC,
-      distance: result.totalDistance,
-      waypoints: result.waypoints
+      batterySoC: batterySoC,
+      distance: distance,
+      waypoints:[]
     });
-
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({
+    console.error("Error occurred:", err);  // Log the error if any occurs during the process
+    return res.status(505).json({
       error: "Some error occurred."
     });
   }
 };
+
+
 
 export const droneDetails = async (req, res) => {
   try {
@@ -86,7 +88,8 @@ export const getDroneLocation = async (req, res) => {
   try {
     return res.status(200).json({
       message: "Drone details uploaded successfully!",
-      initialDroneData
+      initialDroneData,
+      
     });
   } catch (err) {
     console.error(err);
