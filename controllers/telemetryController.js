@@ -111,6 +111,26 @@ export const command = async (req, res) => {
   }
 }
 
+export const getCommand = async (req, res) => {
+  try {
+    if(!command || command.length==0){
+      return res.status(500).json({
+        error: "No command found!"
+      });
+    }
+    const command=commands[-1];
+
+    return res.status(200).json({
+      message: "Command sent successfully!",
+      command
+    });
+  } catch {
+    console.error(err);
+    return res.status(500).json({
+      error: "Some error occurred."
+    });
+  }
+}
 
 
 // POST /api/telemetry/start
