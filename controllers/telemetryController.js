@@ -21,8 +21,9 @@ function generateJourneyId() {
 export const checkFeasibility = async (req, res) => {
   try {
     const { sourceLongi, sourceLatti, destiLongi, destiLatti } = req.body;
-    const batterySoC = initialDroneData.batterySOC;
-
+    // temporarily desabling it for testing purpose
+    //const batterySoC = initialDroneData.batterySOC;
+    const batterySoC=85
     if (batterySoC === null || typeof batterySoC !== "number") {
       return res.status(500).json({ error: "Invalid battery data", batterySoC });
     }
