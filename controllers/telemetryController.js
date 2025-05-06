@@ -163,9 +163,6 @@ export const startJourney = async (req, res) => {
       path,
       timestamp: new Date(),
     };
-    if(path.length==0){
-      res.status(500).json({ error: 'No path waypoints found!' });
-    }
 
     // Save journey in database (only configurations, empty telemetry)
     const initialData = {
