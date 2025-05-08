@@ -9,7 +9,8 @@ const telemetrySchema = new Schema({
   battery: Number,
   currLatti: Number,
   currLongi: Number,
-  currAltitude: Number
+  currAltitude: Number,
+  temperature: Number
 });
 
 const configurationSchema = new Schema({

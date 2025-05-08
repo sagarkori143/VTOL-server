@@ -173,6 +173,7 @@ export const startJourney = async (req, res) => {
       currLatti: 0,
       currLongi: 0,
       currAltitude: 0,
+      temperature: -1
     };
     realtimeTelemetry.push(initialData);
     realtimeConfigurations = configData;
@@ -202,8 +203,8 @@ export const updateJourney = async (req, res) => {
     if (!activeJourneyId) {
       return res.status(400).json({ error: "No active journey" });
     }
-
-    const { horizontalSpeed, verticalSpeed, battery, currLatti, currLongi, currAltitude } = req.body;
+    // maine include kr diya hai ab bas main baat ye hai ki ye raspberry se aana chaiye
+    const { horizontalSpeed, verticalSpeed, battery, currLatti, currLongi, currAltitude, temperature } = req.body;
 
     const journey = await Journey.findOne({ journeyId: activeJourneyId });
     if (!journey) {
@@ -218,6 +219,7 @@ export const updateJourney = async (req, res) => {
       currLatti,
       currLongi,
       currAltitude,
+      temperature,
     };
 
     realtimeTelemetry.push(telemetryData);
