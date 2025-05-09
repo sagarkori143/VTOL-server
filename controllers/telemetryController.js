@@ -12,6 +12,7 @@ let initialDroneData = {
   droneLongi: 0.0
 };
 let path=[]
+const liveTempreature=-1;
 
 // Function to generate a simple journey id (could be replaced with a UUID)
 function generateJourneyId() {
@@ -136,6 +137,22 @@ export const getCommand = async (req, res) => {
   }
 }
 
+export const updateTempreature= async(res,req)=>{
+  try{
+    const {tempreature,humidity}=req.body;
+    liveTempreature=tempreature;
+    return res.status(200).json({
+      message: "Tempreature sent successfully!",
+      command
+    });
+  }catch{
+    console.error(err);
+    return res.status(500).json({
+      error: "Some error occurred."
+    });
+  }
+}
+
 
 // POST /api/telemetry/start
 export const startJourney = async (req, res) => {
@@ -204,7 +221,8 @@ export const updateJourney = async (req, res) => {
       return res.status(400).json({ error: "No active journey" });
     }
     // maine include kr diya hai ab bas main baat ye hai ki ye raspberry se aana chaiye
-    const { horizontalSpeed, verticalSpeed, battery, currLatti, currLongi, currAltitude, temperature } = req.body;
+    const { horizontalSpeed, verticalSpeed, battery, currLatti, currLongi, currAltitude } = req.body;
+    const temperature= liveTempreature;
 
     const journey = await Journey.findOne({ journeyId: activeJourneyId });
     if (!journey) {

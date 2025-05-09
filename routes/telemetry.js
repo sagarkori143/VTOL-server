@@ -1,11 +1,12 @@
 import { Router } from 'express';
 const router = Router();
-import { startJourney, updateJourney, getLatestTelemetry, checkFeasibility, endJourney, command, droneDetails, getDroneLocation, getCommand } from '../controllers/telemetryController.js';
+import { startJourney, updateJourney, getLatestTelemetry, checkFeasibility, endJourney, command, droneDetails, getDroneLocation, getCommand, updateTempreature } from '../controllers/telemetryController.js';
 
 // Route for the drone to upload its battery and location when turned on
 router.post('/drone', droneDetails)
 // Route for getting the above mentioned data
 router.get('/from',getDroneLocation)
+router.post('/tempreature',updateTempreature);
 
 // Route to check if the journey is possible to commence
 router.post('/check',checkFeasibility) // http://localhost:5000/api/telemetry/check
