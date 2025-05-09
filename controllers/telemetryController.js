@@ -11,8 +11,8 @@ let initialDroneData = {
   droneLatti: 0.0,
   droneLongi: 0.0
 };
-let path=[]
-const liveTempreature=-1;
+let path = []
+const liveTempreature = -1;
 
 // Function to generate a simple journey id (could be replaced with a UUID)
 function generateJourneyId() {
@@ -54,7 +54,7 @@ export const checkFeasibility = async (req, res) => {
       message: "This journey can be commenced. Go ahead!",
       batterySoC: batterySoC,
       distance: distance,
-      waypoints:[]
+      waypoints: []
     });
   } catch (err) {
     console.error("Error occurred:", err);  // Log the error if any occurs during the process
@@ -90,7 +90,7 @@ export const getDroneLocation = async (req, res) => {
     return res.status(200).json({
       message: "Drone details uploaded successfully!",
       initialDroneData,
-      
+
     });
   } catch (err) {
     console.error(err);
@@ -118,12 +118,12 @@ export const command = async (req, res) => {
 
 export const getCommand = async (req, res) => {
   try {
-    if(!command || command.length==0){
+    if (!command || command.length == 0) {
       return res.status(500).json({
         error: "No command found!"
       });
     }
-    const command=commands[-1];
+    const command = commands[-1];
 
     return res.status(200).json({
       message: "Command sent successfully!",
@@ -137,15 +137,15 @@ export const getCommand = async (req, res) => {
   }
 }
 
-export const updateTempreature= async(res,req)=>{
-  try{
-    const {tempreature,humidity}=req.body;
-    liveTempreature=tempreature;
+export const updateTempreature = async (res, req) => {
+  try {
+    const { tempreature, humidity } = req.body;
+    liveTempreature = tempreature;
     return res.status(200).json({
       message: "Tempreature sent successfully!",
       command
     });
-  }catch{
+  } catch {
     console.error(err);
     return res.status(500).json({
       error: "Some error occurred."
@@ -222,7 +222,7 @@ export const updateJourney = async (req, res) => {
     }
     // maine include kr diya hai ab bas main baat ye hai ki ye raspberry se aana chaiye
     const { horizontalSpeed, verticalSpeed, battery, currLatti, currLongi, currAltitude } = req.body;
-    const temperature= liveTempreature;
+    const temperature = liveTempreature;
 
     const journey = await Journey.findOne({ journeyId: activeJourneyId });
     if (!journey) {
@@ -242,7 +242,9 @@ export const updateJourney = async (req, res) => {
 
     realtimeTelemetry.push(telemetryData);
     journey.telemetry.push(telemetryData);
-    journey.commands.push(commands);
+    if (Array.isArray(commands)) {
+      journey.commands.push(...commands); // ✅ spreads array items into the array
+    }
     await journey.save();
 
     res.status(200).json({ status: "Telemetry updated", telemetryData });
@@ -299,10 +301,10 @@ export const endJourney = async (req, res) => {
     // Reset in-memory state only after successful update
     activeJourneyId = null;
     realtimeTelemetry = [];
-    commands=[];    
-    initialDroneData.batterySOC=0;
-    initialDroneData.droneLatti=0.0;
-    initialDroneData.droneLongi-0.0;
+    commands = [];
+    initialDroneData.batterySOC = 0;
+    initialDroneData.droneLatti = 0.0;
+    initialDroneData.droneLongi - 0.0;
 
     res.status(200).json({ status: "Journey ended successfully." });
   } catch (error) {
