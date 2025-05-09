@@ -262,6 +262,7 @@ export const getLatestTelemetry = async (req, res) => {
     res.status(200).json({
       latestTelemetry,
       configurations: realtimeConfigurations, // Include configuration details
+      liveTempreature
     });
   } catch (error) {
     console.error('Error getting latest telemetry:', error);
